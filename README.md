@@ -82,7 +82,3 @@ skillswap/
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
-
-- Thanks to all contributors who have helped shape this project
-- Inspired by the need for accessible skill-sharing platforms
