@@ -41,25 +41,7 @@ cd skillswap
 npm install
 ```
 
-3. Set up environment variables:
-
-   - Copy the `.env.example` file to a new file named `.env`:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   - Open the `.env` file and replace the placeholder values with your Firebase configuration:
-
-   ```
-   REACT_APP_FIREBASE_API_KEY=your_actual_api_key
-   REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   ...
-   ```
-
-   You can find these values in your Firebase project settings.
-
-4. Start the development server:
+3. Start the development server:
 
 ```bash
 npm start
@@ -67,44 +49,24 @@ npm start
 
 The app will be available at `http://localhost:3000`
 
-## Environment Variables
-
-This project uses environment variables to store sensitive information like Firebase configuration. These variables are stored in a `.env` file at the root of the project.
-
-**Important:** Never commit your `.env` file to version control. It contains sensitive API keys and credentials.
-
-Required environment variables:
-
-```
-REACT_APP_FIREBASE_API_KEY=your_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=your_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
-```
-
 ## Project Structure
 
 ```
 skillswap/
 ├── public/
 ├── src/
-│   ├── components/       # Reusable UI components
-│   ├── contexts/         # React context providers
-│   ├── features/         # Feature-specific components
-│   │   ├── auth/
-│   │   ├── profile/
-│   │   ├── skills/
-│   │   └── messaging/
-│   ├── services/         # API and service functions
-│   ├── utils/            # Utility functions
-│   ├── App.js            # Main app component
-│   ├── firebase.js       # Firebase configuration
-│   └── index.js          # Entry point
-├── .env                  # Environment variables (not in version control)
-├── .env.example          # Example environment variables template
+│   ├── components/
+│   │   └── Navbar.js
+│   │
+│   │   └── Navbar.js
+│   ├── pages/
+│   │   ├── Home.js
+│   │   ├── Login.js
+│   │   ├── Register.js
+│   │   ├── Profile.js
+│   │   └── SkillExchange.js
+│   ├── App.js
+│   └── index.js
 └── package.json
 ```
 
