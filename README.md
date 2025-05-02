@@ -1,6 +1,11 @@
 # SkillSwap Platform
 
 A peer-to-peer micro mentorship app that lets users connect and exchange skills, promoting collaborative learning through time-based swaps.
+![image](https://github.com/user-attachments/assets/306df142-b096-44c6-ab48-5323e023392a)
+![image](https://github.com/user-attachments/assets/798094a1-9542-4398-a528-20398947d31b)
+
+![image](https://github.com/user-attachments/assets/b3f8e931-751c-4ad7-aaa8-2a972378e2bf)
+![image](https://github.com/user-attachments/assets/4f4ebfc6-5ec8-4256-a21c-c94078d9c4e7)
 
 ## Features
 
