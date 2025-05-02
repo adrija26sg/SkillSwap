@@ -21,8 +21,8 @@ function ConversationList({ onSelectConversation }) {
         // Get user data for each conversation partner
         const conversationsWithUserData = await Promise.all(
           conversationsData.map(async (conversation) => {
-            const partnerId = conversation.partnerId;
-            const userData = await getUserData(partnerId);
+            const sessionId = conversation.sessionId;
+            const userData = await getUserData(conversation.partnerId);
             return {
               ...conversation,
               partner: userData,
@@ -66,8 +66,8 @@ function ConversationList({ onSelectConversation }) {
     <div className="divide-y divide-gray-200">
       {conversations.map((conversation) => (
         <button
-          key={conversation.partnerId}
-          onClick={() => onSelectConversation(conversation.partnerId)}
+          key={conversation.sessionId}
+          onClick={() => onSelectConversation(conversation.sessionId)}
           className="w-full p-4 hover:bg-gray-50 focus:outline-none focus:bg-gray-50 transition-colors duration-150"
         >
           <div className="flex items-center space-x-4">

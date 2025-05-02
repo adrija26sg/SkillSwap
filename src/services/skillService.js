@@ -14,20 +14,31 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 
+// Import seed data function
+import { seedSkills } from "../seedData";
+
 // Get all skills available for exchange
 export async function getAllSkills() {
   try {
+    console.log("Getting all skills...");
     const skillsQuery = query(
       collection(db, "skills"),
       orderBy("createdAt", "desc")
     );
     const querySnapshot = await getDocs(skillsQuery);
 
-    const skills = [];
+    let skills = [];
     querySnapshot.forEach((doc) => {
       skills.push({ id: doc.id, ...doc.data() });
     });
 
+    // If no skills found, seed the database with sample skills
+    if (skills.length === 0) {
+      console.log("No skills found, seeding database...");
+      skills = await seedSkills();
+    }
+
+    console.log(`Retrieved ${skills.length} skills`);
     return skills;
   } catch (error) {
     console.error("Error getting skills:", error);

@@ -20,29 +20,55 @@ export async function findSkillMatches(userId) {
     const userDoc = await getDoc(doc(db, "users", userId));
     const userData = userDoc.data();
 
-    // Get user's learning interests
-    const learningInterests = userData.learningInterests || [];
-
-    // Find users who can teach these skills
-    const potentialMatches = [];
-    for (const skill of learningInterests) {
-      const teachersQuery = query(
-        collection(db, "users"),
-        where("teachingSkills", "array-contains", skill)
-      );
-
-      const teachersSnapshot = await getDocs(teachersQuery);
-      teachersSnapshot.forEach((doc) => {
-        if (doc.id !== userId) {
-          potentialMatches.push({
-            userId: doc.id,
-            ...doc.data(),
-            matchingSkill: skill,
-          });
-        }
-      });
+    if (!userData) {
+      console.log("No user data found for:", userId);
+      return [];
     }
 
+    console.log("User data:", userData);
+
+    // Get user's learning interests - check both interests and learningInterests fields
+    const learningInterests =
+      userData.interests || userData.learningInterests || [];
+    console.log("Learning interests:", learningInterests);
+
+    if (learningInterests.length === 0) {
+      console.log("No learning interests found for user");
+      return [];
+    }
+
+    // Find users who can teach these skills - check both skills and teachingSkills fields
+    const potentialMatches = [];
+
+    // Get all users
+    const usersSnapshot = await getDocs(collection(db, "users"));
+
+    usersSnapshot.forEach((userDoc) => {
+      if (userDoc.id === userId) return; // Skip current user
+
+      const potentialTeacher = userDoc.data();
+      const teacherSkills =
+        potentialTeacher.skills || potentialTeacher.teachingSkills || [];
+
+      // Find matching skills
+      const matchingSkills = learningInterests.filter((interest) =>
+        teacherSkills.some(
+          (skill) =>
+            skill.toLowerCase().includes(interest.toLowerCase()) ||
+            interest.toLowerCase().includes(skill.toLowerCase())
+        )
+      );
+
+      if (matchingSkills.length > 0) {
+        potentialMatches.push({
+          userId: userDoc.id,
+          ...potentialTeacher,
+          matchingSkill: matchingSkills[0], // Use the first matching skill
+        });
+      }
+    });
+
+    console.log("Found potential matches:", potentialMatches.length);
     return potentialMatches;
   } catch (error) {
     console.error("Error finding skill matches:", error);
@@ -71,19 +97,48 @@ export async function createTimeExchange(
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("User not authenticated");
 
-    const exchangeData = {
+    console.log("Creating time exchange:", {
       teacherId,
       studentId,
       skill,
       duration,
+    });
+
+    // Get teacher and student details for reference
+    const [teacherDoc, studentDoc] = await Promise.all([
+      getDoc(doc(db, "users", teacherId)),
+      getDoc(doc(db, "users", studentId)),
+    ]);
+
+    if (!teacherDoc.exists()) {
+      throw new Error("Teacher not found");
+    }
+
+    if (!studentDoc.exists()) {
+      throw new Error("Student not found");
+    }
+
+    const teacherName = teacherDoc.data().name || "Unknown Teacher";
+    const studentName = studentDoc.data().name || "Unknown Student";
+
+    const exchangeData = {
+      teacherId,
+      studentId,
+      teacherName,
+      studentName,
+      skill,
+      duration,
       status: "pending",
-      createdAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
       scheduledFor: null,
       completedAt: null,
       credits: duration, // 1 hour = 1 credit
+      participants: [teacherId, studentId], // Add participants array for easier querying
+      messages: [], // Initialize empty messages array for communication
     };
 
     const exchangeRef = await addDoc(collection(db, "exchanges"), exchangeData);
+    console.log("Exchange created with ID:", exchangeRef.id);
     return exchangeRef.id;
   } catch (error) {
     console.error("Error creating time exchange:", error);
@@ -125,10 +180,26 @@ export async function completeTimeExchange(exchangeId) {
 // Session Scheduling Functions
 export async function scheduleSession(exchangeId, scheduledTime) {
   try {
+    console.log("Scheduling session:", exchangeId, "for", scheduledTime);
+
+    // Validate the exchange exists
+    const exchangeDoc = await getDoc(doc(db, "exchanges", exchangeId));
+
+    if (!exchangeDoc.exists()) {
+      throw new Error("Exchange not found");
+    }
+
+    // Format the date as ISO string to ensure consistency
+    const scheduledTimeISO = scheduledTime.toISOString();
+
+    // Update the exchange with the scheduled time
     await updateDoc(doc(db, "exchanges", exchangeId), {
-      scheduledFor: scheduledTime,
+      scheduledFor: scheduledTimeISO,
       status: "scheduled",
+      updatedAt: serverTimestamp(),
     });
+
+    console.log("Session scheduled successfully");
     return true;
   } catch (error) {
     console.error("Error scheduling session:", error);
@@ -138,23 +209,63 @@ export async function scheduleSession(exchangeId, scheduledTime) {
 
 export async function getUpcomingSessions(userId) {
   try {
-    const now = new Date();
-    const sessionsQuery = query(
+    console.log("Getting upcoming sessions for user:", userId);
+    const now = new Date().toISOString();
+
+    // Query for sessions where user is the teacher
+    const teacherQuery = query(
       collection(db, "exchanges"),
-      where("status", "==", "scheduled"),
-      where("scheduledFor", ">", now)
+      where("teacherId", "==", userId),
+      where("status", "==", "scheduled")
     );
 
-    const sessionsSnapshot = await getDocs(sessionsQuery);
+    // Query for sessions where user is the student
+    const studentQuery = query(
+      collection(db, "exchanges"),
+      where("studentId", "==", userId),
+      where("status", "==", "scheduled")
+    );
+
+    // Execute both queries
+    const [teacherSnapshot, studentSnapshot] = await Promise.all([
+      getDocs(teacherQuery),
+      getDocs(studentQuery),
+    ]);
+
     const sessions = [];
 
-    sessionsSnapshot.forEach((doc) => {
-      const session = { id: doc.id, ...doc.data() };
-      if (session.teacherId === userId || session.studentId === userId) {
-        sessions.push(session);
+    // Process teacher sessions
+    teacherSnapshot.forEach((doc) => {
+      const data = doc.data();
+      // Only include future sessions
+      if (data.scheduledFor && data.scheduledFor > now) {
+        sessions.push({
+          id: doc.id,
+          ...data,
+          role: "teacher",
+        });
       }
     });
 
+    // Process student sessions
+    studentSnapshot.forEach((doc) => {
+      const data = doc.data();
+      // Only include future sessions
+      if (data.scheduledFor && data.scheduledFor > now) {
+        sessions.push({
+          id: doc.id,
+          ...data,
+          role: "student",
+        });
+      }
+    });
+
+    // Sort sessions by scheduledFor date
+    sessions.sort((a, b) => {
+      return new Date(a.scheduledFor) - new Date(b.scheduledFor);
+    });
+
+    console.log("Found upcoming sessions:", sessions.length);
     return sessions;
   } catch (error) {
     console.error("Error getting upcoming sessions:", error);

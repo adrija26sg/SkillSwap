@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CalendarIcon, ClockIcon } from "@heroicons/react/24/outline";
 
-function AvailabilityCalendar({ availability }) {
+function AvailabilityCalendar({ availability, onUpdateAvailability }) {
   const [selectedDay, setSelectedDay] = useState(null);
+  const [localAvailability, setLocalAvailability] = useState({});
+  const [hasChanges, setHasChanges] = useState(false);
 
   const days = [
     "Monday",
@@ -13,6 +15,7 @@ function AvailabilityCalendar({ availability }) {
     "Saturday",
     "Sunday",
   ];
+
   const timeSlots = [
     "Morning (6am-12pm)",
     "Afternoon (12pm-5pm)",
@@ -20,9 +23,44 @@ function AvailabilityCalendar({ availability }) {
     "Night (10pm-6am)",
   ];
 
+  // Initialize local availability from props
+  useEffect(() => {
+    setLocalAvailability(availability || {});
+  }, [availability]);
+
   const handleTimeSlotToggle = (day, timeSlot) => {
-    // This would be connected to a state management solution in a real app
-    console.log(`Toggled ${timeSlot} for ${day}`);
+    setLocalAvailability((prev) => {
+      const newAvailability = { ...prev };
+
+      // If day doesn't exist in availability, create it
+      if (!newAvailability[day]) {
+        newAvailability[day] = [];
+      }
+
+      // If time slot is already in the day's availability, remove it
+      if (newAvailability[day].includes(timeSlot)) {
+        newAvailability[day] = newAvailability[day].filter(
+          (slot) => slot !== timeSlot
+        );
+
+        // If day has no time slots left, remove the day
+        if (newAvailability[day].length === 0) {
+          delete newAvailability[day];
+        }
+      }
+      // Otherwise, add the time slot
+      else {
+        newAvailability[day] = [...newAvailability[day], timeSlot];
+      }
+
+      setHasChanges(true);
+      return newAvailability;
+    });
+  };
+
+  const handleSaveAvailability = () => {
+    onUpdateAvailability(localAvailability);
+    setHasChanges(false);
   };
 
   return (
@@ -69,15 +107,16 @@ function AvailabilityCalendar({ availability }) {
               <tr
                 key={dayIndex}
                 className={selectedDay === day ? "bg-blue-900/30" : ""}
+                onClick={() => setSelectedDay(day === selectedDay ? null : day)}
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white cursor-pointer">
                   {day}
                 </td>
                 {timeSlots.map((slot, slotIndex) => {
                   const isAvailable =
-                    availability &&
-                    availability[day] &&
-                    availability[day].includes(slot);
+                    localAvailability &&
+                    localAvailability[day] &&
+                    localAvailability[day].includes(slot);
 
                   return (
                     <td
@@ -85,7 +124,10 @@ function AvailabilityCalendar({ availability }) {
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-400"
                     >
                       <button
-                        onClick={() => handleTimeSlotToggle(day, slot)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTimeSlotToggle(day, slot);
+                        }}
                         className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
                           isAvailable
                             ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
@@ -108,7 +150,15 @@ function AvailabilityCalendar({ availability }) {
           <ClockIcon className="h-4 w-4 mr-1 text-blue-400" />
           <span>All times are in your local timezone</span>
         </div>
-        <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
+        <button
+          onClick={handleSaveAvailability}
+          disabled={!hasChanges}
+          className={`px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg transition-all duration-300 shadow-lg shadow-blue-500/20 ${
+            hasChanges
+              ? "hover:from-blue-500 hover:to-indigo-500 hover:shadow-blue-500/40"
+              : "opacity-50 cursor-not-allowed"
+          }`}
+        >
           Save Availability
         </button>
       </div>
